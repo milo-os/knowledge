@@ -1,10 +1,12 @@
-package main
+// Package controllermanager provides the cobra subcommand for the knowledge
+// controller manager.
+package controllermanager
 
 import (
 	"flag"
-	"fmt"
 	"os"
 
+	"github.com/spf13/cobra"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/discovery/cached/memory"
 	"k8s.io/client-go/dynamic"
@@ -25,20 +27,36 @@ import (
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 )
 
-func main() {
+// NewCommand returns the cobra command for the knowledge controller-manager subcommand.
+func NewCommand() *cobra.Command {
 	var (
 		metricsAddr          string
 		probeAddr            string
 		enableLeaderElection bool
 	)
-	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "Address the metrics endpoint binds to.")
-	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "Address the health probe endpoint binds to.")
-	flag.BoolVar(&enableLeaderElection, "leader-elect", false, "Enable leader election for the controller manager.")
 	opts := zap.Options{Development: true}
-	opts.BindFlags(flag.CommandLine)
-	flag.Parse()
 
-	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
+	cmd := &cobra.Command{
+		Use:   "controller-manager",
+		Short: "Controller manager for the Milo OS knowledge graph service",
+		RunE: func(_ *cobra.Command, _ []string) error {
+			return run(metricsAddr, probeAddr, enableLeaderElection, &opts)
+		},
+	}
+
+	cmd.Flags().StringVar(&metricsAddr, "metrics-bind-address", ":8080", "Address the metrics endpoint binds to.")
+	cmd.Flags().StringVar(&probeAddr, "health-probe-bind-address", ":8081", "Address the health probe endpoint binds to.")
+	cmd.Flags().BoolVar(&enableLeaderElection, "leader-elect", false, "Enable leader election for the controller manager.")
+	// Bind zap flags via the stdlib flag package, then add them to cobra's pflag set.
+	goFlagSet := flag.NewFlagSet("controller-manager", flag.ContinueOnError)
+	opts.BindFlags(goFlagSet)
+	cmd.Flags().AddGoFlagSet(goFlagSet)
+
+	return cmd
+}
+
+func run(metricsAddr, probeAddr string, enableLeaderElection bool, opts *zap.Options) error {
+	ctrl.SetLogger(zap.New(zap.UseFlagOptions(opts)))
 	klog.SetLogger(ctrl.Log)
 
 	cfg := ctrl.GetConfigOrDie()
@@ -55,24 +73,24 @@ func main() {
 		LeaderElectionNamespace: leaderElectionNamespace(),
 	})
 	if err != nil {
-		fail("unable to create manager", err)
+		return err
 	}
 
 	dynClient, err := dynamic.NewForConfig(cfg)
 	if err != nil {
-		fail("unable to create dynamic client", err)
+		return err
 	}
 
 	kubeClient, err := kubernetes.NewForConfig(cfg)
 	if err != nil {
-		fail("unable to create kubernetes client", err)
+		return err
 	}
 	cachedDisc := memory.NewMemCacheClient(discovery.NewDiscoveryClient(kubeClient.Discovery().RESTClient()))
 	mapper := restmapper.NewDeferredDiscoveryRESTMapper(cachedDisc)
 
 	celEng, err := celengine.NewEngine()
 	if err != nil {
-		fail("unable to create CEL engine", err)
+		return err
 	}
 
 	if err := (&policyctrl.Reconciler{
@@ -81,7 +99,7 @@ func main() {
 		RESTMapper:    mapper,
 		CEL:           celEng,
 	}).SetupWithManager(mgr); err != nil {
-		fail("unable to set up policy controller", err)
+		return err
 	}
 
 	if err := (&relationshipctrl.Reconciler{
@@ -89,19 +107,17 @@ func main() {
 		DynamicClient: dynClient,
 		RESTMapper:    mapper,
 	}).SetupWithManager(mgr); err != nil {
-		fail("unable to set up relationship controller", err)
+		return err
 	}
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
-		fail("unable to register healthz", err)
+		return err
 	}
 	if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
-		fail("unable to register readyz", err)
+		return err
 	}
 
-	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
-		fail("manager exited with error", err)
-	}
+	return mgr.Start(ctrl.SetupSignalHandler())
 }
 
 func leaderElectionNamespace() string {
@@ -109,9 +125,4 @@ func leaderElectionNamespace() string {
 		return ns
 	}
 	return "knowledge-system"
-}
-
-func fail(msg string, err error) {
-	fmt.Fprintf(os.Stderr, "%s: %v\n", msg, err)
-	os.Exit(1)
 }

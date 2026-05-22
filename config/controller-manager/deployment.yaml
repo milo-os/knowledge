@@ -22,6 +22,9 @@ spec:
         - name: manager
           image: knowledge-controller-manager:latest
           imagePullPolicy: IfNotPresent
+          command:
+            - /knowledge
+            - controller-manager
           args:
             - --leader-elect=true
             - --metrics-bind-address=:8080

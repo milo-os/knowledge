@@ -20,6 +20,9 @@ spec:
         - name: apiserver
           image: knowledge-apiserver:latest
           imagePullPolicy: IfNotPresent
+          command:
+            - /knowledge
+            - apiserver
           args:
             - --secure-port=6443
             - --postgres-dsn=$(POSTGRES_DSN)

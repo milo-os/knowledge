@@ -1,7 +1,6 @@
 # Build outputs
 /bin/
-/apiserver
-/controller-manager
+/knowledge
 *.o
 *.a
 

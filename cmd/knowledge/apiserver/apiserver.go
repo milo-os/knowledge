@@ -1,12 +1,11 @@
-// Command knowledge-apiserver runs the aggregated API server for the
-// knowledge graph service.
-package main
+// Package apiserver provides the cobra subcommand for the knowledge aggregated
+// API server.
+package apiserver
 
 import (
 	"flag"
 	"fmt"
 	"net"
-	"os"
 
 	"github.com/spf13/cobra"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -15,7 +14,6 @@ import (
 	genericapiserver "k8s.io/apiserver/pkg/server"
 	"k8s.io/apiserver/pkg/endpoints/openapi"
 	genericoptions "k8s.io/apiserver/pkg/server/options"
-	"k8s.io/component-base/cli"
 	"k8s.io/component-base/cli/globalflag"
 	utilversion "k8s.io/component-base/version"
 	openapicommon "k8s.io/kube-openapi/pkg/common"
@@ -26,6 +24,11 @@ import (
 	postgresstorage "go.miloapis.com/knowledge/internal/apiserver/storage/postgres"
 	v1alpha1 "go.miloapis.com/knowledge/pkg/apis/knowledge/v1alpha1"
 )
+
+func init() {
+	utilruntime.Must(v1alpha1.AddToScheme(knowledgeapiserver.Scheme))
+	_ = schema.GroupVersion{} // keep import
+}
 
 // options bundles command-line flags for the knowledge-apiserver.
 type options struct {
@@ -134,10 +137,11 @@ func (o *options) run(stopCh <-chan struct{}) error {
 	return server.Run(stopCh)
 }
 
-func newCommand() *cobra.Command {
+// NewCommand returns the cobra command for the knowledge apiserver subcommand.
+func NewCommand() *cobra.Command {
 	o := newOptions()
 	cmd := &cobra.Command{
-		Use:   "knowledge-apiserver",
+		Use:   "apiserver",
 		Short: "Aggregated API server for the Milo OS knowledge graph service",
 		RunE: func(_ *cobra.Command, _ []string) error {
 			if err := o.validate(); err != nil {
@@ -156,9 +160,3 @@ func newCommand() *cobra.Command {
 	return cmd
 }
 
-func main() {
-	utilruntime.Must(v1alpha1.AddToScheme(knowledgeapiserver.Scheme))
-	_ = schema.GroupVersion{} // keep import
-	code := cli.Run(newCommand())
-	os.Exit(code)
-}
