@@ -158,12 +158,5 @@ func Traverse(
 		frontierEndpoints = nextFrontierEndpoints
 	}
 
-	// If we exited the depth loop with a non-empty frontier, there may be more nodes.
-	if !truncated && len(frontier) > 0 {
-		// frontier still had nodes but we hit maxDepth — not a truncation by nodes,
-		// but we can't traverse further. This is expected behavior, not truncation.
-		// Only set truncated if we actually hit the maxNodes limit above.
-	}
-
 	return nodes, edges, truncated, nil
 }

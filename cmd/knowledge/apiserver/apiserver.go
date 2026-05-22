@@ -3,6 +3,7 @@
 package apiserver
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"net"
@@ -108,10 +109,10 @@ func (o *options) config() (*knowledgeapiserver.Config, error) {
 	// handler that would fatal on missing built-in type definitions.
 	nopDefs := func(_ openapicommon.ReferenceCallback) map[string]openapicommon.OpenAPIDefinition { return nil }
 	defNamer := openapi.NewDefinitionNamer(knowledgeapiserver.Scheme)
-	serverConfig.Config.OpenAPIV3Config = genericapiserver.DefaultOpenAPIV3Config(nopDefs, defNamer)
-	serverConfig.Config.OpenAPIV3Config.Info.Title = "knowledge-apiserver"
-	serverConfig.Config.OpenAPIV3Config.Info.Version = "v1alpha1"
-	serverConfig.Config.OpenAPIV3Config.IgnorePrefixes = []string{"/apis/knowledge.miloapis.com"}
+	serverConfig.OpenAPIV3Config = genericapiserver.DefaultOpenAPIV3Config(nopDefs, defNamer)
+	serverConfig.OpenAPIV3Config.Info.Title = "knowledge-apiserver"
+	serverConfig.OpenAPIV3Config.Info.Version = "v1alpha1"
+	serverConfig.OpenAPIV3Config.IgnorePrefixes = []string{"/apis/knowledge.miloapis.com"}
 
 	provider := &storagepkg.StorageProvider{
 		Scheme:            knowledgeapiserver.Scheme,
@@ -125,7 +126,7 @@ func (o *options) config() (*knowledgeapiserver.Config, error) {
 	}, nil
 }
 
-func (o *options) run(stopCh <-chan struct{}) error {
+func (o *options) run(ctx context.Context) error {
 	cfg, err := o.config()
 	if err != nil {
 		return err
@@ -134,7 +135,7 @@ func (o *options) run(stopCh <-chan struct{}) error {
 	if err != nil {
 		return err
 	}
-	return server.Run(stopCh)
+	return server.Run(ctx)
 }
 
 // NewCommand returns the cobra command for the knowledge apiserver subcommand.
@@ -143,11 +144,11 @@ func NewCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "apiserver",
 		Short: "Aggregated API server for the Milo OS knowledge graph service",
-		RunE: func(_ *cobra.Command, _ []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			if err := o.validate(); err != nil {
 				return err
 			}
-			return o.run(genericapiserver.SetupSignalHandler())
+			return o.run(cmd.Context())
 		},
 	}
 	fs := cmd.Flags()

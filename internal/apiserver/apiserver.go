@@ -3,6 +3,7 @@
 package apiserver
 
 import (
+	"context"
 	"fmt"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -91,7 +92,7 @@ func (c CompletedConfig) New() (*Server, error) {
 	return &Server{GenericAPIServer: genericServer}, nil
 }
 
-// Run starts the API server and blocks until stopCh is closed.
-func (s *Server) Run(stopCh <-chan struct{}) error {
-	return s.GenericAPIServer.PrepareRun().Run(stopCh)
+// Run starts the API server and blocks until ctx is done.
+func (s *Server) Run(ctx context.Context) error {
+	return s.GenericAPIServer.PrepareRun().RunWithContext(ctx)
 }
