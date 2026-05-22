@@ -53,4 +53,4 @@ tasks:
   test:e2e:
     desc: Run chainsaw e2e tests
     cmds:
-      - chainsaw test test/e2e/chainsaw/
+      - chainsaw test --parallel 1 test/e2e/chainsaw/
