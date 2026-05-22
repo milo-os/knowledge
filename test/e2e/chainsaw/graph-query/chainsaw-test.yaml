@@ -255,20 +255,22 @@ spec:
                 object:
                   kind: ConfigMap
                   name: app-config
-    - name: submit-graph-query
+    - name: run-graph-query
       try:
-        - apply:
-            resource:
+        - script:
+            timeout: 60s
+            content: |
+              cat <<MANIFEST | kubectl create -n "${NAMESPACE}" -o json -f - | jq -e '.status.nodes | length >= 4'
               apiVersion: knowledge.miloapis.com/v1alpha1
               kind: GraphQuery
               metadata:
-                name: ingress-graph
+                generateName: ingress-graph-
               spec:
                 root:
                   apiGroup: networking.k8s.io
                   kind: Ingress
                   name: app-ingress
-                  namespace: ($namespace)
+                  namespace: ${NAMESPACE}
                   controlPlaneContextRef:
                     kind: Project
                     name: default
@@ -276,10 +278,4 @@ spec:
                   maxDepth: 5
                   maxNodes: 100
                   direction: Outbound
-    - name: assert-graph-result
-      try:
-        - script:
-            timeout: 60s
-            content: |
-              kubectl get graphquery ingress-graph -n $NAMESPACE -o json | \
-                jq -e '.status.nodes | length >= 4'
+              MANIFEST
