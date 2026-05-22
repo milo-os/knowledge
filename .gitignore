@@ -19,5 +19,6 @@ ui/.vite/
 
 # Local dev
 *.local
-.env
 kubeconfig
+config.bat
+node_modules
