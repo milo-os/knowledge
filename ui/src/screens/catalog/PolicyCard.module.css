@@ -1,0 +1,72 @@
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.headerRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.name {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  word-break: break-all;
+}
+
+.pill {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.ready {
+  background: rgba(77, 99, 86, 0.3);
+  color: #8FB8A0;
+  border: 1px solid var(--status-valid);
+}
+
+.error {
+  background: rgba(196, 91, 86, 0.2);
+  color: #E08D88;
+  border: 1px solid var(--status-error);
+}
+
+.pending {
+  background: rgba(155, 107, 107, 0.2);
+  color: #D4A87A;
+  border: 1px solid var(--ctx-platform);
+}
+
+.row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.label {
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 10px;
+}
+
+.value {
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+}

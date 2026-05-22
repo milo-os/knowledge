@@ -1,0 +1,26 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: knowledge-controller-manager
+rules:
+  # Dynamic discovery + reads of arbitrary resources referenced by policies and edges.
+  - apiGroups: ["*"]
+    resources: ["*"]
+    verbs: ["get", "list", "watch"]
+  # Manage knowledge graph resources.
+  - apiGroups: ["knowledge.miloapis.com"]
+    resources:
+      - relationshippolicies
+      - relationshippolicies/status
+      - resourcerelationships
+      - resourcerelationships/status
+      - relationshiptypes
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  # Leader election.
+  - apiGroups: ["coordination.k8s.io"]
+    resources: ["leases"]
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
+  # Event recording.
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["create", "patch"]

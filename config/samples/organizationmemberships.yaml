@@ -1,0 +1,26 @@
+# Demo seed data — do not hand-edit. Re-run: kubectl apply -k config/samples/
+#
+# These OrganizationMembership resources are the source of truth for User↔Organization
+# relationships. The membership-of-user and membership-in-organization RelationshipPolicies
+# watch these and auto-create the graph edges.
+apiVersion: resourcemanager.miloapis.com/v1alpha1
+kind: OrganizationMembership
+metadata:
+  name: alice-acme-corp
+  namespace: organization-acme-corp
+spec:
+  organizationRef:
+    name: acme-corp
+  userRef:
+    name: alice
+---
+apiVersion: resourcemanager.miloapis.com/v1alpha1
+kind: OrganizationMembership
+metadata:
+  name: bob-acme-corp
+  namespace: organization-acme-corp
+spec:
+  organizationRef:
+    name: acme-corp
+  userRef:
+    name: bob

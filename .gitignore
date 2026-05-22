@@ -1,5 +1,7 @@
 # Build outputs
 /bin/
+/apiserver
+/controller-manager
 *.o
 *.a
 

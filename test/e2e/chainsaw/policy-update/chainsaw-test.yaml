@@ -1,0 +1,162 @@
+apiVersion: chainsaw.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: policy-update
+spec:
+  steps:
+    - name: setup
+      try:
+        - apply:
+            resource:
+              apiVersion: knowledge.miloapis.com/v1alpha1
+              kind: RelationshipType
+              metadata:
+                name: references-config
+              spec:
+                displayName: "ReferencesConfig"
+                description: "Subject references object as a configuration source"
+                subjectGVK:
+                  group: "apps"
+                  version: "v1"
+                  kind: "Deployment"
+                objectGVK:
+                  group: ""
+                  version: "v1"
+                  kind: "ConfigMap"
+                cardinality: ManyToMany
+        - apply:
+            resource:
+              apiVersion: knowledge.miloapis.com/v1alpha1
+              kind: RelationshipPolicy
+              metadata:
+                name: deployment-references-configmap
+              spec:
+                relationshipType:
+                  name: references-config
+                subject:
+                  apiGroup: apps
+                  kind: Deployment
+                  namespaces: []
+                discovery:
+                  expression: |
+                    subject.spec.template.spec.containers.map(c,
+                      (!has(c.env) ? [] : c.env.filter(e, has(e.valueFrom) && has(e.valueFrom.configMapKeyRef))
+                         .map(e, e.valueFrom.configMapKeyRef.name))
+                    ).flatten().toSet().map(cmName, {
+                      "apiGroup": "",
+                      "kind": "ConfigMap",
+                      "name": cmName,
+                      "namespace": subject.metadata.namespace,
+                      "controlPlaneContextKind": "Project",
+                      "controlPlaneContextName": "default"
+                    })
+                controlPlaneContextRef:
+                  kind: Project
+                  name: default
+        - apply:
+            resource:
+              apiVersion: v1
+              kind: ConfigMap
+              metadata:
+                name: app-config
+              data:
+                key: value
+        - apply:
+            resource:
+              apiVersion: apps/v1
+              kind: Deployment
+              metadata:
+                name: app
+              spec:
+                replicas: 1
+                selector:
+                  matchLabels:
+                    app: demo
+                template:
+                  metadata:
+                    labels:
+                      app: demo
+                  spec:
+                    containers:
+                      - name: app
+                        image: nginx:alpine
+                        env:
+                          - name: CONFIG_VALUE
+                            valueFrom:
+                              configMapKeyRef:
+                                name: app-config
+                                key: key
+    - name: assert-initial-relationship
+      try:
+        - assert:
+            timeout: 90s
+            resource:
+              apiVersion: knowledge.miloapis.com/v1alpha1
+              kind: ResourceRelationship
+              spec:
+                relationshipType:
+                  name: references-config
+                subject:
+                  kind: Deployment
+                  name: app
+                object:
+                  kind: ConfigMap
+                  name: app-config
+    - name: create-second-configmap
+      try:
+        - apply:
+            resource:
+              apiVersion: v1
+              kind: ConfigMap
+              metadata:
+                name: app-config-v2
+              data:
+                key2: value2
+    - name: update-deployment-to-reference-second-configmap
+      try:
+        - apply:
+            resource:
+              apiVersion: apps/v1
+              kind: Deployment
+              metadata:
+                name: app
+              spec:
+                replicas: 1
+                selector:
+                  matchLabels:
+                    app: demo
+                template:
+                  metadata:
+                    labels:
+                      app: demo
+                  spec:
+                    containers:
+                      - name: app
+                        image: nginx:alpine
+                        env:
+                          - name: CONFIG_VALUE
+                            valueFrom:
+                              configMapKeyRef:
+                                name: app-config
+                                key: key
+                          - name: CONFIG_VALUE_V2
+                            valueFrom:
+                              configMapKeyRef:
+                                name: app-config-v2
+                                key: key2
+    - name: assert-new-relationship-created
+      try:
+        - assert:
+            timeout: 90s
+            resource:
+              apiVersion: knowledge.miloapis.com/v1alpha1
+              kind: ResourceRelationship
+              spec:
+                relationshipType:
+                  name: references-config
+                subject:
+                  kind: Deployment
+                  name: app
+                object:
+                  kind: ConfigMap
+                  name: app-config-v2

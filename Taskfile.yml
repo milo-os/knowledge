@@ -1,0 +1,54 @@
+version: '3'
+
+vars:
+  APISERVER_IMAGE_NAME: "ghcr.io/milo-os/knowledge-apiserver"
+  APISERVER_IMAGE_TAG: "dev"
+  CONTROLLER_IMAGE_NAME: "ghcr.io/milo-os/knowledge-controller-manager"
+  CONTROLLER_IMAGE_TAG: "dev"
+  TEST_INFRA_CLUSTER_NAME: "test-infra"
+  TEST_INFRA_REPO_REF: 'v0.6.0'
+
+includes:
+  test-infra:
+    taskfile: https://raw.githubusercontent.com/datum-cloud/test-infra/{{.TEST_INFRA_REPO_REF}}/Taskfile.yml
+    vars:
+      REPO_REF: "{{.TEST_INFRA_REPO_REF}}"
+
+tasks:
+  default:
+    desc: List all available tasks
+    cmds:
+      - task --list
+    silent: true
+
+  dev:build:
+    desc: Build apiserver and controller-manager Docker images
+    cmds:
+      - docker build -t "{{.APISERVER_IMAGE_NAME}}:{{.APISERVER_IMAGE_TAG}}" -f Dockerfile.apiserver .
+      - docker build -t "{{.CONTROLLER_IMAGE_NAME}}:{{.CONTROLLER_IMAGE_TAG}}" -f Dockerfile.controller-manager .
+
+  dev:load:
+    desc: Load dev images into the kind cluster
+    cmds:
+      - kind load docker-image "{{.APISERVER_IMAGE_NAME}}:{{.APISERVER_IMAGE_TAG}}" --name "{{.TEST_INFRA_CLUSTER_NAME}}"
+      - kind load docker-image "{{.CONTROLLER_IMAGE_NAME}}:{{.CONTROLLER_IMAGE_TAG}}" --name "{{.TEST_INFRA_CLUSTER_NAME}}"
+
+  dev:deploy:
+    desc: Deploy knowledge service to the kind cluster
+    cmds:
+      - task test-infra:kubectl -- apply -k config/apiserver/
+      - task test-infra:kubectl -- apply -k config/controller-manager/
+      - task test-infra:kubectl -- rollout status deployment/knowledge-apiserver -n knowledge-system --timeout=300s
+      - task test-infra:kubectl -- rollout status deployment/knowledge-controller-manager -n knowledge-system --timeout=300s
+
+  dev:seed:
+    desc: Apply sample RelationshipTypes, RelationshipPolicies, and ResourceRelationships
+    cmds:
+      - task: test-infra:kubectl
+        vars:
+          ARGS: "apply -k config/samples/"
+
+  test:e2e:
+    desc: Run chainsaw e2e tests
+    cmds:
+      - chainsaw test test/e2e/chainsaw/

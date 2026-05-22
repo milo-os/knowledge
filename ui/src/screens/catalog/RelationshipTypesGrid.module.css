@@ -1,0 +1,27 @@
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.muted {
+  color: var(--text-muted);
+  font-size: 13px;
+  padding: 24px 0;
+}
+
+.error {
+  color: var(--status-error);
+  font-size: 13px;
+  padding: 24px 0;
+}
+
+.empty {
+  color: var(--text-secondary);
+  font-size: 13px;
+  padding: 32px;
+  background: var(--bg-card);
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  text-align: center;
+}

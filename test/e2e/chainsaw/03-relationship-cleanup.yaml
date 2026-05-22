@@ -1,0 +1,34 @@
+apiVersion: chainsaw.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: relationship-cleanup
+spec:
+  steps:
+    - name: delete-service
+      try:
+        - delete:
+            ref:
+              apiVersion: v1
+              kind: Service
+              name: app-svc
+              namespace: default
+    - name: assert-relationship-gone-or-invalid
+      try:
+        - script:
+            timeout: 90s
+            content: |
+              RR=$(kubectl get resourcerelationship -n default \
+                -l knowledge.miloapis.com/policy-name=ingress-routes-to-service,knowledge.miloapis.com/policy-namespace=default \
+                -o json 2>/dev/null)
+              COUNT=$(echo "$RR" | jq '.items | length')
+              if [ "$COUNT" -eq 0 ]; then
+                echo "OK: relationship deleted"
+                exit 0
+              fi
+              VALID=$(echo "$RR" | jq -r '.items[0].status.conditions[] | select(.type=="Valid") | .status')
+              if [ "$VALID" = "False" ]; then
+                echo "OK: relationship marked invalid"
+                exit 0
+              fi
+              echo "FAIL: relationship still exists and is valid"
+              exit 1

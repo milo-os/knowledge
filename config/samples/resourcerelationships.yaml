@@ -1,0 +1,468 @@
+# Demo seed data — do not hand-edit. Re-run: kubectl apply -k config/samples/
+#
+# Only relationships that cannot be auto-discovered by a RelationshipPolicy live
+# here (e.g. cross-API-group edges where neither endpoint has a field pointing
+# at the other, or operational bootstrap relationships with no spec field).
+# Certificate/HelmChart relationships are omitted — they are discovered
+# automatically by the policies in relationshippolicies.yaml.
+# User↔Organization membership is omitted — discovered via OrganizationMembership
+# resources and the membership-of-user / membership-in-organization policies.
+apiVersion: knowledge.miloapis.com/v1alpha1
+kind: ResourceRelationship
+metadata:
+  name: api-backend-attached-main-gateway
+  namespace: default
+  labels:
+    knowledge.miloapis.com/relationship-type: domain-attached-to-gateway
+    knowledge.miloapis.com/source-type: Manual
+    knowledge.miloapis.com/subject-kind: Ingress
+spec:
+  relationshipType:
+    name: domain-attached-to-gateway
+  subject:
+    apiGroup: networking.k8s.io
+    kind: Ingress
+    name: api-backend
+    namespace: default
+    controlPlaneContextRef:
+      kind: Project
+      name: my-project
+  object:
+    apiGroup: gateway.networking.k8s.io
+    kind: Gateway
+    name: main-gateway
+    namespace: default
+    controlPlaneContextRef:
+      kind: Project
+      name: my-project
+  source:
+    type: Manual
+---
+apiVersion: knowledge.miloapis.com/v1alpha1
+kind: ResourceRelationship
+metadata:
+  name: my-project-owned-by-acme-corp
+  namespace: default
+  labels:
+    knowledge.miloapis.com/relationship-type: project-owned-by-organization
+    knowledge.miloapis.com/source-type: Manual
+    knowledge.miloapis.com/subject-kind: Project
+spec:
+  relationshipType:
+    name: project-owned-by-organization
+  subject:
+    apiGroup: core.miloapis.com
+    kind: Project
+    name: my-project
+    controlPlaneContextRef:
+      kind: Organization
+      name: acme-corp
+  object:
+    apiGroup: iam.miloapis.com
+    kind: Organization
+    name: acme-corp
+    controlPlaneContextRef:
+      kind: Organization
+      name: acme-corp
+  source:
+    type: Manual
+---
+apiVersion: knowledge.miloapis.com/v1alpha1
+kind: ResourceRelationship
+metadata:
+  name: web-frontend-attached-main-gateway
+  namespace: default
+  labels:
+    knowledge.miloapis.com/relationship-type: domain-attached-to-gateway
+    knowledge.miloapis.com/source-type: Manual
+    knowledge.miloapis.com/subject-kind: Ingress
+spec:
+  relationshipType:
+    name: domain-attached-to-gateway
+  subject:
+    apiGroup: networking.k8s.io
+    kind: Ingress
+    name: web-frontend
+    namespace: default
+    controlPlaneContextRef:
+      kind: Project
+      name: my-project
+  object:
+    apiGroup: gateway.networking.k8s.io
+    kind: Gateway
+    name: main-gateway
+    namespace: default
+    controlPlaneContextRef:
+      kind: Project
+      name: my-project
+  source:
+    type: Manual
+---
+apiVersion: knowledge.miloapis.com/v1alpha1
+kind: ResourceRelationship
+metadata:
+  name: automation-ca-issuer-bootstrapped-by-selfsigned
+  namespace: knowledge-system
+  labels:
+    knowledge.miloapis.com/relationship-type: issuer-bootstrapped-by-clusterissuer
+    knowledge.miloapis.com/source-type: Manual
+    knowledge.miloapis.com/subject-kind: Issuer
+spec:
+  relationshipType:
+    name: issuer-bootstrapped-by-clusterissuer
+  subject:
+    apiGroup: cert-manager.io
+    kind: Issuer
+    name: automation-ca-issuer
+    namespace: automation-system
+    controlPlaneContextRef:
+      kind: Platform
+      name: local
+  object:
+    apiGroup: cert-manager.io
+    kind: ClusterIssuer
+    name: selfsigned-cluster-issuer
+    controlPlaneContextRef:
+      kind: Platform
+      name: local
+  source:
+    type: Manual
+---
+apiVersion: knowledge.miloapis.com/v1alpha1
+kind: ResourceRelationship
+metadata:
+  name: cert-manager-cert-manager-sources-from-jetstack
+  namespace: knowledge-system
+  labels:
+    knowledge.miloapis.com/relationship-type: helmrelease-sources-from-helmrepository
+    knowledge.miloapis.com/source-type: Manual
+    knowledge.miloapis.com/subject-kind: HelmRelease
+spec:
+  relationshipType:
+    name: helmrelease-sources-from-helmrepository
+  subject:
+    apiGroup: helm.toolkit.fluxcd.io
+    kind: HelmRelease
+    name: cert-manager
+    namespace: cert-manager
+    controlPlaneContextRef:
+      kind: Platform
+      name: local
+  object:
+    apiGroup: source.toolkit.fluxcd.io
+    kind: HelmRepository
+    name: jetstack
+    namespace: cert-manager
+    controlPlaneContextRef:
+      kind: Platform
+      name: local
+  source:
+    type: Manual
+---
+apiVersion: knowledge.miloapis.com/v1alpha1
+kind: ResourceRelationship
+metadata:
+  name: cert-manager-csi-driver-cert-manager-sources-from-jetstack
+  namespace: knowledge-system
+  labels:
+    knowledge.miloapis.com/relationship-type: helmrelease-sources-from-helmrepository
+    knowledge.miloapis.com/source-type: Manual
+    knowledge.miloapis.com/subject-kind: HelmRelease
+spec:
+  relationshipType:
+    name: helmrelease-sources-from-helmrepository
+  subject:
+    apiGroup: helm.toolkit.fluxcd.io
+    kind: HelmRelease
+    name: cert-manager-csi-driver
+    namespace: cert-manager
+    controlPlaneContextRef:
+      kind: Platform
+      name: local
+  object:
+    apiGroup: source.toolkit.fluxcd.io
+    kind: HelmRepository
+    name: jetstack
+    namespace: cert-manager
+    controlPlaneContextRef:
+      kind: Platform
+      name: local
+  source:
+    type: Manual
+---
+apiVersion: knowledge.miloapis.com/v1alpha1
+kind: ResourceRelationship
+metadata:
+  name: default-gateway-secured-by-tls-cert
+  namespace: knowledge-system
+  labels:
+    knowledge.miloapis.com/relationship-type: gateway-secured-by-certificate
+    knowledge.miloapis.com/source-type: Manual
+    knowledge.miloapis.com/subject-kind: Gateway
+spec:
+  relationshipType:
+    name: gateway-secured-by-certificate
+  subject:
+    apiGroup: gateway.networking.k8s.io
+    kind: Gateway
+    name: default-gateway
+    namespace: envoy-gateway-system
+    controlPlaneContextRef:
+      kind: Platform
+      name: local
+  object:
+    apiGroup: cert-manager.io
+    kind: Certificate
+    name: default-tls-certificate
+    namespace: envoy-gateway-system
+    controlPlaneContextRef:
+      kind: Platform
+      name: local
+  source:
+    type: Manual
+---
+apiVersion: knowledge.miloapis.com/v1alpha1
+kind: ResourceRelationship
+metadata:
+  name: default-gateway-uses-merged-gatewayclass
+  namespace: knowledge-system
+  labels:
+    knowledge.miloapis.com/relationship-type: gateway-uses-gatewayclass
+    knowledge.miloapis.com/source-type: Manual
+    knowledge.miloapis.com/subject-kind: Gateway
+spec:
+  relationshipType:
+    name: gateway-uses-gatewayclass
+  subject:
+    apiGroup: gateway.networking.k8s.io
+    kind: Gateway
+    name: default-gateway
+    namespace: envoy-gateway-system
+    controlPlaneContextRef:
+      kind: Platform
+      name: local
+  object:
+    apiGroup: gateway.networking.k8s.io
+    kind: GatewayClass
+    name: merged-gateway
+    controlPlaneContextRef:
+      kind: Platform
+      name: local
+  source:
+    type: Manual
+---
+apiVersion: knowledge.miloapis.com/v1alpha1
+kind: ResourceRelationship
+metadata:
+  name: envoy-gateway-release-sources-from-oci
+  namespace: knowledge-system
+  labels:
+    knowledge.miloapis.com/relationship-type: helmrelease-sources-from-ocirepository
+    knowledge.miloapis.com/source-type: Manual
+    knowledge.miloapis.com/subject-kind: HelmRelease
+spec:
+  relationshipType:
+    name: helmrelease-sources-from-ocirepository
+  subject:
+    apiGroup: helm.toolkit.fluxcd.io
+    kind: HelmRelease
+    name: envoy-gateway
+    namespace: flux-system
+    controlPlaneContextRef:
+      kind: Platform
+      name: local
+  object:
+    apiGroup: source.toolkit.fluxcd.io
+    kind: OCIRepository
+    name: envoy-gateway
+    namespace: flux-system
+    controlPlaneContextRef:
+      kind: Platform
+      name: local
+  source:
+    type: Manual
+---
+apiVersion: knowledge.miloapis.com/v1alpha1
+kind: ResourceRelationship
+metadata:
+  name: nack-nats-system-sources-from-nats
+  namespace: knowledge-system
+  labels:
+    knowledge.miloapis.com/relationship-type: helmrelease-sources-from-helmrepository
+    knowledge.miloapis.com/source-type: Manual
+    knowledge.miloapis.com/subject-kind: HelmRelease
+spec:
+  relationshipType:
+    name: helmrelease-sources-from-helmrepository
+  subject:
+    apiGroup: helm.toolkit.fluxcd.io
+    kind: HelmRelease
+    name: nack
+    namespace: nats-system
+    controlPlaneContextRef:
+      kind: Platform
+      name: local
+  object:
+    apiGroup: source.toolkit.fluxcd.io
+    kind: HelmRepository
+    name: nats
+    namespace: nats-system
+    controlPlaneContextRef:
+      kind: Platform
+      name: local
+  source:
+    type: Manual
+---
+apiVersion: knowledge.miloapis.com/v1alpha1
+kind: ResourceRelationship
+metadata:
+  name: nats-nats-system-sources-from-nats
+  namespace: knowledge-system
+  labels:
+    knowledge.miloapis.com/relationship-type: helmrelease-sources-from-helmrepository
+    knowledge.miloapis.com/source-type: Manual
+    knowledge.miloapis.com/subject-kind: HelmRelease
+spec:
+  relationshipType:
+    name: helmrelease-sources-from-helmrepository
+  subject:
+    apiGroup: helm.toolkit.fluxcd.io
+    kind: HelmRelease
+    name: nats
+    namespace: nats-system
+    controlPlaneContextRef:
+      kind: Platform
+      name: local
+  object:
+    apiGroup: source.toolkit.fluxcd.io
+    kind: HelmRepository
+    name: nats
+    namespace: nats-system
+    controlPlaneContextRef:
+      kind: Platform
+      name: local
+  source:
+    type: Manual
+---
+apiVersion: knowledge.miloapis.com/v1alpha1
+kind: ResourceRelationship
+metadata:
+  name: postgres-automation-system-sources-from-bitnami-postgres
+  namespace: knowledge-system
+  labels:
+    knowledge.miloapis.com/relationship-type: helmrelease-sources-from-helmrepository
+    knowledge.miloapis.com/source-type: Manual
+    knowledge.miloapis.com/subject-kind: HelmRelease
+spec:
+  relationshipType:
+    name: helmrelease-sources-from-helmrepository
+  subject:
+    apiGroup: helm.toolkit.fluxcd.io
+    kind: HelmRelease
+    name: postgres
+    namespace: automation-system
+    controlPlaneContextRef:
+      kind: Platform
+      name: local
+  object:
+    apiGroup: source.toolkit.fluxcd.io
+    kind: HelmRepository
+    name: bitnami-postgres
+    namespace: automation-system
+    controlPlaneContextRef:
+      kind: Platform
+      name: local
+  source:
+    type: Manual
+---
+apiVersion: knowledge.miloapis.com/v1alpha1
+kind: ResourceRelationship
+metadata:
+  name: postgres-quota-system-sources-from-bitnami-postgres
+  namespace: knowledge-system
+  labels:
+    knowledge.miloapis.com/relationship-type: helmrelease-sources-from-helmrepository
+    knowledge.miloapis.com/source-type: Manual
+    knowledge.miloapis.com/subject-kind: HelmRelease
+spec:
+  relationshipType:
+    name: helmrelease-sources-from-helmrepository
+  subject:
+    apiGroup: helm.toolkit.fluxcd.io
+    kind: HelmRelease
+    name: postgres
+    namespace: quota-system
+    controlPlaneContextRef:
+      kind: Platform
+      name: local
+  object:
+    apiGroup: source.toolkit.fluxcd.io
+    kind: HelmRepository
+    name: bitnami-postgres
+    namespace: quota-system
+    controlPlaneContextRef:
+      kind: Platform
+      name: local
+  source:
+    type: Manual
+---
+apiVersion: knowledge.miloapis.com/v1alpha1
+kind: ResourceRelationship
+metadata:
+  name: quota-ca-issuer-bootstrapped-by-selfsigned
+  namespace: knowledge-system
+  labels:
+    knowledge.miloapis.com/relationship-type: issuer-bootstrapped-by-clusterissuer
+    knowledge.miloapis.com/source-type: Manual
+    knowledge.miloapis.com/subject-kind: Issuer
+spec:
+  relationshipType:
+    name: issuer-bootstrapped-by-clusterissuer
+  subject:
+    apiGroup: cert-manager.io
+    kind: Issuer
+    name: quota-ca-issuer
+    namespace: quota-system
+    controlPlaneContextRef:
+      kind: Platform
+      name: local
+  object:
+    apiGroup: cert-manager.io
+    kind: ClusterIssuer
+    name: selfsigned-cluster-issuer
+    controlPlaneContextRef:
+      kind: Platform
+      name: local
+  source:
+    type: Manual
+---
+apiVersion: knowledge.miloapis.com/v1alpha1
+kind: ResourceRelationship
+metadata:
+  name: quota-events-consumer-subscribes-to-stream
+  namespace: knowledge-system
+  labels:
+    knowledge.miloapis.com/relationship-type: consumer-subscribes-to-stream
+    knowledge.miloapis.com/source-type: Manual
+    knowledge.miloapis.com/subject-kind: Consumer
+spec:
+  relationshipType:
+    name: consumer-subscribes-to-stream
+  subject:
+    apiGroup: jetstream.nats.io
+    kind: Consumer
+    name: quota-events-consumer
+    namespace: quota-system
+    controlPlaneContextRef:
+      kind: Platform
+      name: local
+  object:
+    apiGroup: jetstream.nats.io
+    kind: Stream
+    name: quota-events
+    namespace: quota-system
+    controlPlaneContextRef:
+      kind: Platform
+      name: local
+  source:
+    type: Manual

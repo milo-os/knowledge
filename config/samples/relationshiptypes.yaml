@@ -1,0 +1,325 @@
+# Demo seed data — do not hand-edit. Re-run: kubectl apply -k config/samples/
+apiVersion: knowledge.miloapis.com/v1alpha1
+kind: RelationshipType
+metadata:
+  name: certificate-issued-by-clusterissuer
+spec:
+  displayName: IssuedBy
+  description: Certificate is issued by a ClusterIssuer
+  subjectGVK:
+    group: cert-manager.io
+    version: v1
+    kind: Certificate
+  objectGVK:
+    group: cert-manager.io
+    version: v1
+    kind: ClusterIssuer
+  cardinality: ManyToOne
+---
+apiVersion: knowledge.miloapis.com/v1alpha1
+kind: RelationshipType
+metadata:
+  name: certificate-issued-by-issuer
+spec:
+  displayName: IssuedBy
+  description: Certificate is issued by a namespaced Issuer
+  subjectGVK:
+    group: cert-manager.io
+    version: v1
+    kind: Certificate
+  objectGVK:
+    group: cert-manager.io
+    version: v1
+    kind: Issuer
+  cardinality: ManyToOne
+---
+apiVersion: knowledge.miloapis.com/v1alpha1
+kind: RelationshipType
+metadata:
+  name: clusterpolicy-governs-namespace
+spec:
+  displayName: Governs
+  description: ClusterPolicy applies admission control rules to a Namespace
+  subjectGVK:
+    group: kyverno.io
+    version: v1
+    kind: ClusterPolicy
+  objectGVK:
+    group: ""
+    version: v1
+    kind: Namespace
+  cardinality: ManyToMany
+---
+apiVersion: knowledge.miloapis.com/v1alpha1
+kind: RelationshipType
+metadata:
+  name: consumer-subscribes-to-stream
+spec:
+  displayName: SubscribesTo
+  description: NATS Consumer subscribes to a NATS Stream
+  subjectGVK:
+    group: jetstream.nats.io
+    version: v1beta2
+    kind: Consumer
+  objectGVK:
+    group: jetstream.nats.io
+    version: v1beta2
+    kind: Stream
+  cardinality: ManyToOne
+---
+apiVersion: knowledge.miloapis.com/v1alpha1
+kind: RelationshipType
+metadata:
+  name: domain-attached-to-gateway
+spec:
+  displayName: AttachedTo
+  description: Ingress domain is attached to a Gateway
+  subjectGVK:
+    group: networking.k8s.io
+    version: v1
+    kind: Ingress
+  objectGVK:
+    group: gateway.networking.k8s.io
+    version: v1
+    kind: Gateway
+  cardinality: ManyToMany
+---
+apiVersion: knowledge.miloapis.com/v1alpha1
+kind: RelationshipType
+metadata:
+  name: gateway-secured-by-certificate
+spec:
+  displayName: SecuredBy
+  description: Gateway TLS is secured by a Certificate
+  subjectGVK:
+    group: gateway.networking.k8s.io
+    version: v1
+    kind: Gateway
+  objectGVK:
+    group: cert-manager.io
+    version: v1
+    kind: Certificate
+  cardinality: ManyToOne
+---
+apiVersion: knowledge.miloapis.com/v1alpha1
+kind: RelationshipType
+metadata:
+  name: gateway-uses-gatewayclass
+spec:
+  displayName: Uses
+  description: Gateway uses a GatewayClass for its implementation
+  subjectGVK:
+    group: gateway.networking.k8s.io
+    version: v1
+    kind: Gateway
+  objectGVK:
+    group: gateway.networking.k8s.io
+    version: v1
+    kind: GatewayClass
+  cardinality: ManyToOne
+---
+apiVersion: knowledge.miloapis.com/v1alpha1
+kind: RelationshipType
+metadata:
+  name: helmchart-sourced-from-helmrepository
+spec:
+  displayName: SourcedFrom
+  description: HelmChart is sourced from a HelmRepository
+  subjectGVK:
+    group: source.toolkit.fluxcd.io
+    version: v1
+    kind: HelmChart
+  objectGVK:
+    group: source.toolkit.fluxcd.io
+    version: v1
+    kind: HelmRepository
+  cardinality: ManyToOne
+---
+apiVersion: knowledge.miloapis.com/v1alpha1
+kind: RelationshipType
+metadata:
+  name: helmrelease-deploys-to-namespace
+spec:
+  displayName: DeploysTo
+  description: HelmRelease deploys its workloads to a Namespace
+  subjectGVK:
+    group: helm.toolkit.fluxcd.io
+    version: v2
+    kind: HelmRelease
+  objectGVK:
+    group: ""
+    version: v1
+    kind: Namespace
+  cardinality: ManyToOne
+---
+apiVersion: knowledge.miloapis.com/v1alpha1
+kind: RelationshipType
+metadata:
+  name: helmrelease-sources-from-helmrepository
+spec:
+  displayName: SourcesFrom
+  description: HelmRelease sources its chart from a HelmRepository
+  subjectGVK:
+    group: helm.toolkit.fluxcd.io
+    version: v2
+    kind: HelmRelease
+  objectGVK:
+    group: source.toolkit.fluxcd.io
+    version: v1
+    kind: HelmRepository
+  cardinality: ManyToOne
+---
+apiVersion: knowledge.miloapis.com/v1alpha1
+kind: RelationshipType
+metadata:
+  name: helmrelease-sources-from-ocirepository
+spec:
+  displayName: SourcesFrom
+  description: HelmRelease sources its chart from an OCI Repository
+  subjectGVK:
+    group: helm.toolkit.fluxcd.io
+    version: v2
+    kind: HelmRelease
+  objectGVK:
+    group: source.toolkit.fluxcd.io
+    version: v1beta2
+    kind: OCIRepository
+  cardinality: ManyToOne
+---
+apiVersion: knowledge.miloapis.com/v1alpha1
+kind: RelationshipType
+metadata:
+  name: httproute-attaches-to-gateway
+spec:
+  displayName: AttachesTo
+  description: HTTPRoute attaches to a Gateway for traffic routing
+  subjectGVK:
+    group: gateway.networking.k8s.io
+    version: v1
+    kind: HTTPRoute
+  objectGVK:
+    group: gateway.networking.k8s.io
+    version: v1
+    kind: Gateway
+  cardinality: ManyToMany
+---
+apiVersion: knowledge.miloapis.com/v1alpha1
+kind: RelationshipType
+metadata:
+  name: issuer-bootstrapped-by-clusterissuer
+spec:
+  displayName: BootstrappedBy
+  description: Issuer CA cert is signed by a ClusterIssuer
+  subjectGVK:
+    group: cert-manager.io
+    version: v1
+    kind: Issuer
+  objectGVK:
+    group: cert-manager.io
+    version: v1
+    kind: ClusterIssuer
+  cardinality: ManyToOne
+---
+apiVersion: knowledge.miloapis.com/v1alpha1
+kind: RelationshipType
+metadata:
+  name: kustomization-sources-from-gitrepository
+spec:
+  displayName: SourcesFrom
+  description: Kustomization sources its manifests from a GitRepository
+  subjectGVK:
+    group: kustomize.toolkit.fluxcd.io
+    version: v1
+    kind: Kustomization
+  objectGVK:
+    group: source.toolkit.fluxcd.io
+    version: v1
+    kind: GitRepository
+  cardinality: ManyToOne
+---
+apiVersion: knowledge.miloapis.com/v1alpha1
+kind: RelationshipType
+metadata:
+  name: project-owned-by-organization
+spec:
+  displayName: OwnedBy
+  description: Project is owned by Organization
+  subjectGVK:
+    group: core.miloapis.com
+    version: v1alpha1
+    kind: Project
+  objectGVK:
+    group: iam.miloapis.com
+    version: v1alpha1
+    kind: Organization
+  cardinality: ManyToOne
+---
+apiVersion: knowledge.miloapis.com/v1alpha1
+kind: RelationshipType
+metadata:
+  name: securitypolicy-applies-to-gateway
+spec:
+  displayName: AppliesTo
+  description: SecurityPolicy applies security controls to a Gateway
+  subjectGVK:
+    group: gateway.envoyproxy.io
+    version: v1alpha1
+    kind: SecurityPolicy
+  objectGVK:
+    group: gateway.networking.k8s.io
+    version: v1
+    kind: Gateway
+  cardinality: ManyToOne
+---
+apiVersion: knowledge.miloapis.com/v1alpha1
+kind: RelationshipType
+metadata:
+  name: user-member-organization
+spec:
+  displayName: Member
+  description: User is a member of Organization
+  subjectGVK:
+    group: iam.miloapis.com
+    version: v1alpha1
+    kind: User
+  objectGVK:
+    group: iam.miloapis.com
+    version: v1alpha1
+    kind: Organization
+  cardinality: ManyToMany
+---
+apiVersion: knowledge.miloapis.com/v1alpha1
+kind: RelationshipType
+metadata:
+  name: membership-of-user
+spec:
+  displayName: MembershipOf
+  description: OrganizationMembership links to its User
+  subjectGVK:
+    group: resourcemanager.miloapis.com
+    version: v1alpha1
+    kind: OrganizationMembership
+  objectGVK:
+    group: iam.miloapis.com
+    version: v1alpha1
+    kind: User
+  cardinality: ManyToOne
+  transparent: true
+---
+apiVersion: knowledge.miloapis.com/v1alpha1
+kind: RelationshipType
+metadata:
+  name: membership-in-organization
+spec:
+  displayName: MembershipIn
+  description: OrganizationMembership links to its Organization
+  subjectGVK:
+    group: resourcemanager.miloapis.com
+    version: v1alpha1
+    kind: OrganizationMembership
+  objectGVK:
+    group: resourcemanager.miloapis.com
+    version: v1alpha1
+    kind: Organization
+  cardinality: ManyToOne
+  transparent: true

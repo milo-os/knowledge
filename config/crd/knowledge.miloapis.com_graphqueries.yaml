@@ -1,0 +1,225 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.21.0
+  name: graphqueries.knowledge.miloapis.com
+spec:
+  group: knowledge.miloapis.com
+  names:
+    categories:
+    - knowledge
+    kind: GraphQuery
+    listKind: GraphQueryList
+    plural: graphqueries
+    singular: graphquery
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: |-
+          GraphQuery is the Schema for the graphqueries API.
+          It follows the SubjectAccessReview pattern: create-only, synchronous result in HTTP response.
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: GraphQuerySpec defines the desired state of GraphQuery
+            properties:
+              root:
+                description: Root is the starting resource endpoint for the traversal.
+                properties:
+                  apiGroup:
+                    description: APIGroup is the API group of the resource.
+                    type: string
+                  controlPlaneContextRef:
+                    description: ControlPlaneContextRef identifies which control plane
+                      context this resource belongs to.
+                    properties:
+                      kind:
+                        description: 'Kind is the type of control plane context. Must
+                          be one of: Platform, Organization, Project, User.'
+                        enum:
+                        - Platform
+                        - Organization
+                        - Project
+                        - User
+                        type: string
+                      name:
+                        description: Name is the name of the control plane context
+                          instance.
+                        type: string
+                    required:
+                    - kind
+                    - name
+                    type: object
+                  kind:
+                    description: Kind is the kind of the resource.
+                    type: string
+                  name:
+                    description: Name is the name of the resource.
+                    type: string
+                  namespace:
+                    description: Namespace is the namespace of the resource. Optional
+                      for cluster-scoped resources.
+                    type: string
+                required:
+                - apiGroup
+                - controlPlaneContextRef
+                - kind
+                - name
+                type: object
+              traverse:
+                description: Traverse defines the traversal parameters.
+                properties:
+                  direction:
+                    description: Direction defines the direction of traversal relative
+                      to the root node.
+                    enum:
+                    - Outbound
+                    - Inbound
+                    - Both
+                    type: string
+                  maxDepth:
+                    default: 5
+                    description: MaxDepth is the maximum number of hops to traverse.
+                    maximum: 20
+                    type: integer
+                  maxNodes:
+                    default: 100
+                    description: MaxNodes is the maximum number of nodes to return.
+                    maximum: 1000
+                    type: integer
+                  relationshipTypes:
+                    description: |-
+                      RelationshipTypes restricts traversal to only these relationship type names.
+                      If empty, all relationship types are traversed.
+                    items:
+                      type: string
+                    type: array
+                type: object
+            required:
+            - root
+            - traverse
+            type: object
+          status:
+            description: GraphQueryStatus defines the observed state of GraphQuery
+            properties:
+              edges:
+                description: Edges is the list of edges discovered during traversal.
+                items:
+                  description: GraphEdge represents a relationship edge in the traversal
+                    result.
+                  properties:
+                    id:
+                      description: ID is the unique identifier of this edge within
+                        the result set.
+                      type: string
+                    objectNodeID:
+                      description: ObjectNodeID is the ID of the object node in this
+                        edge.
+                      type: string
+                    relationshipType:
+                      description: RelationshipType is the name of the RelationshipType
+                        for this edge.
+                      type: string
+                    subjectNodeID:
+                      description: SubjectNodeID is the ID of the subject node in
+                        this edge.
+                      type: string
+                  required:
+                  - id
+                  - objectNodeID
+                  - relationshipType
+                  - subjectNodeID
+                  type: object
+                type: array
+              nodes:
+                description: Nodes is the list of nodes discovered during traversal.
+                items:
+                  description: GraphNode represents a single node in the traversal
+                    result.
+                  properties:
+                    depth:
+                      description: Depth is the number of hops from the root node
+                        to this node.
+                      type: integer
+                    endpoint:
+                      description: Endpoint identifies the Kubernetes resource this
+                        node represents.
+                      properties:
+                        apiGroup:
+                          description: APIGroup is the API group of the resource.
+                          type: string
+                        controlPlaneContextRef:
+                          description: ControlPlaneContextRef identifies which control
+                            plane context this resource belongs to.
+                          properties:
+                            kind:
+                              description: 'Kind is the type of control plane context.
+                                Must be one of: Platform, Organization, Project, User.'
+                              enum:
+                              - Platform
+                              - Organization
+                              - Project
+                              - User
+                              type: string
+                            name:
+                              description: Name is the name of the control plane context
+                                instance.
+                              type: string
+                          required:
+                          - kind
+                          - name
+                          type: object
+                        kind:
+                          description: Kind is the kind of the resource.
+                          type: string
+                        name:
+                          description: Name is the name of the resource.
+                          type: string
+                        namespace:
+                          description: Namespace is the namespace of the resource.
+                            Optional for cluster-scoped resources.
+                          type: string
+                      required:
+                      - apiGroup
+                      - controlPlaneContextRef
+                      - kind
+                      - name
+                      type: object
+                    id:
+                      description: ID is the unique identifier of this node within
+                        the result set.
+                      type: string
+                  required:
+                  - depth
+                  - endpoint
+                  - id
+                  type: object
+                type: array
+              truncated:
+                description: Truncated indicates whether the result was truncated
+                  due to MaxNodes or MaxDepth limits.
+                type: boolean
+            type: object
+        type: object
+    served: true
+    storage: true

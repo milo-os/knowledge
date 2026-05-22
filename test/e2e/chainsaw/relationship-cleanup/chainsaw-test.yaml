@@ -1,0 +1,129 @@
+apiVersion: chainsaw.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: relationship-cleanup
+spec:
+  steps:
+    - name: setup
+      try:
+        - apply:
+            resource:
+              apiVersion: knowledge.miloapis.com/v1alpha1
+              kind: RelationshipType
+              metadata:
+                name: routes-to
+              spec:
+                displayName: "RoutesTo"
+                description: "Subject routes traffic to object"
+                subjectGVK:
+                  group: "networking.k8s.io"
+                  version: "v1"
+                  kind: "Ingress"
+                objectGVK:
+                  group: ""
+                  version: "v1"
+                  kind: "Service"
+                cardinality: ManyToMany
+        - apply:
+            resource:
+              apiVersion: knowledge.miloapis.com/v1alpha1
+              kind: RelationshipPolicy
+              metadata:
+                name: ingress-routes-to-service
+              spec:
+                relationshipType:
+                  name: routes-to
+                subject:
+                  apiGroup: networking.k8s.io
+                  kind: Ingress
+                  namespaces: []
+                discovery:
+                  expression: |
+                    subject.spec.rules.filter(r, has(r.http)).map(r,
+                      r.http.paths.map(p, {
+                        "apiGroup": "",
+                        "kind": "Service",
+                        "name": p.backend.service.name,
+                        "namespace": subject.metadata.namespace,
+                        "controlPlaneContextKind": "Project",
+                        "controlPlaneContextName": "default"
+                      })
+                    ).flatten().toSet()
+                controlPlaneContextRef:
+                  kind: Project
+                  name: default
+        - apply:
+            resource:
+              apiVersion: v1
+              kind: Service
+              metadata:
+                name: app-svc
+              spec:
+                selector:
+                  app: demo
+                ports:
+                  - port: 80
+        - apply:
+            resource:
+              apiVersion: networking.k8s.io/v1
+              kind: Ingress
+              metadata:
+                name: app-ingress
+              spec:
+                rules:
+                  - host: demo.example.com
+                    http:
+                      paths:
+                        - path: /
+                          pathType: Prefix
+                          backend:
+                            service:
+                              name: app-svc
+                              port:
+                                number: 80
+    - name: assert-relationship-exists
+      try:
+        - assert:
+            timeout: 90s
+            resource:
+              apiVersion: knowledge.miloapis.com/v1alpha1
+              kind: ResourceRelationship
+              spec:
+                relationshipType:
+                  name: routes-to
+                subject:
+                  kind: Ingress
+                  name: app-ingress
+                object:
+                  kind: Service
+                  name: app-svc
+    - name: delete-service
+      try:
+        - delete:
+            ref:
+              apiVersion: v1
+              kind: Service
+              name: app-svc
+    - name: assert-relationship-gone-or-invalid
+      try:
+        - script:
+            timeout: 90s
+            content: |
+              for i in $(seq 1 90); do
+                RR=$(kubectl get resourcerelationship -n $NAMESPACE \
+                  -l knowledge.miloapis.com/policy-name=ingress-routes-to-service,knowledge.miloapis.com/policy-namespace=$NAMESPACE \
+                  -o json 2>/dev/null)
+                COUNT=$(echo "$RR" | jq '.items | length')
+                if [ "$COUNT" -eq 0 ]; then
+                  echo "OK: relationship deleted (after ${i}s)"
+                  exit 0
+                fi
+                VALID=$(echo "$RR" | jq -r '.items[0].status.conditions[] | select(.type=="Valid") | .status // empty')
+                if [ "$VALID" = "False" ]; then
+                  echo "OK: relationship marked invalid (after ${i}s)"
+                  exit 0
+                fi
+                sleep 1
+              done
+              echo "FAIL: relationship still exists and is valid after 90s"
+              exit 1

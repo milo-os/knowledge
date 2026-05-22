@@ -1,0 +1,131 @@
+# Demo seed data — do not hand-edit. Re-run: kubectl apply -k config/samples/
+apiVersion: knowledge.miloapis.com/v1alpha1
+kind: RelationshipPolicy
+metadata:
+  name: ingress-gateway-policy
+  namespace: default
+spec:
+  relationshipType:
+    name: domain-attached-to-gateway
+  subject:
+    apiGroup: networking.k8s.io
+    kind: Ingress
+  discovery:
+    expression: |
+      [{
+        "apiGroup": "gateway.networking.k8s.io",
+        "kind": "Gateway",
+        "name": subject.spec.ingressClassName,
+        "namespace": subject.metadata.namespace,
+        "controlPlaneContextKind": "Project",
+        "controlPlaneContextName": "my-project"
+      }]
+  controlPlaneContextRef:
+    kind: Project
+    name: my-project
+---
+# Discovers Certificate → ClusterIssuer edges from cert-manager Certificate spec.issuerRef
+apiVersion: knowledge.miloapis.com/v1alpha1
+kind: RelationshipPolicy
+metadata:
+  name: certificate-issued-by-clusterissuer-policy
+  namespace: knowledge-system
+spec:
+  controlPlaneContextRef:
+    kind: Platform
+    name: local
+  relationshipType:
+    name: certificate-issued-by-clusterissuer
+  subject:
+    apiGroup: cert-manager.io
+    kind: Certificate
+    namespaces: []
+  discovery:
+    expression: |
+      "issuerRef" in subject.spec && subject.spec.issuerRef.kind == "ClusterIssuer" ?
+        [{"apiGroup": "cert-manager.io", "kind": "ClusterIssuer", "name": subject.spec.issuerRef.name}] :
+        []
+---
+# Discovers Certificate → Issuer edges from cert-manager Certificate spec.issuerRef
+apiVersion: knowledge.miloapis.com/v1alpha1
+kind: RelationshipPolicy
+metadata:
+  name: certificate-issued-by-issuer-policy
+  namespace: knowledge-system
+spec:
+  controlPlaneContextRef:
+    kind: Platform
+    name: local
+  relationshipType:
+    name: certificate-issued-by-issuer
+  subject:
+    apiGroup: cert-manager.io
+    kind: Certificate
+    namespaces: []
+  discovery:
+    expression: |
+      "issuerRef" in subject.spec && subject.spec.issuerRef.kind == "Issuer" ?
+        [{"apiGroup": "cert-manager.io", "kind": "Issuer", "name": subject.spec.issuerRef.name, "namespace": subject.metadata.namespace}] :
+        []
+---
+# Discovers OrganizationMembership → User edges from spec.userRef
+apiVersion: knowledge.miloapis.com/v1alpha1
+kind: RelationshipPolicy
+metadata:
+  name: membership-of-user-policy
+  namespace: knowledge-system
+spec:
+  controlPlaneContextRef:
+    kind: Organization
+    name: acme-corp
+  relationshipType:
+    name: membership-of-user
+  subject:
+    apiGroup: resourcemanager.miloapis.com
+    kind: OrganizationMembership
+    namespaces: []
+  discovery:
+    expression: |
+      [{"apiGroup": "iam.miloapis.com", "kind": "User", "name": subject.spec.userRef.name}]
+---
+# Discovers OrganizationMembership → Organization edges from spec.organizationRef
+apiVersion: knowledge.miloapis.com/v1alpha1
+kind: RelationshipPolicy
+metadata:
+  name: membership-in-organization-policy
+  namespace: knowledge-system
+spec:
+  controlPlaneContextRef:
+    kind: Organization
+    name: acme-corp
+  relationshipType:
+    name: membership-in-organization
+  subject:
+    apiGroup: resourcemanager.miloapis.com
+    kind: OrganizationMembership
+    namespaces: []
+  discovery:
+    expression: |
+      [{"apiGroup": "resourcemanager.miloapis.com", "kind": "Organization", "name": subject.spec.organizationRef.name}]
+---
+# Discovers HelmChart → HelmRepository edges from Flux HelmChart spec.sourceRef
+apiVersion: knowledge.miloapis.com/v1alpha1
+kind: RelationshipPolicy
+metadata:
+  name: helmchart-repository-policy
+  namespace: knowledge-system
+spec:
+  controlPlaneContextRef:
+    kind: Platform
+    name: local
+  relationshipType:
+    name: helmchart-sourced-from-helmrepository
+  subject:
+    apiGroup: source.toolkit.fluxcd.io
+    kind: HelmChart
+    namespaces: []
+  discovery:
+    expression: |
+      "sourceRef" in subject.spec && subject.spec.sourceRef.kind == "HelmRepository" ?
+        [{"apiGroup": "source.toolkit.fluxcd.io", "kind": "HelmRepository", "name": subject.spec.sourceRef.name, "namespace": subject.metadata.namespace}] :
+        []

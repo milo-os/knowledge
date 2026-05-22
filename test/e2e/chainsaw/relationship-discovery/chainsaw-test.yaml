@@ -1,0 +1,259 @@
+apiVersion: chainsaw.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: relationship-discovery
+spec:
+  steps:
+    - name: setup-policies
+      try:
+        - apply:
+            resource:
+              apiVersion: knowledge.miloapis.com/v1alpha1
+              kind: RelationshipType
+              metadata:
+                name: references-config
+              spec:
+                displayName: "ReferencesConfig"
+                description: "Subject references object as a configuration source"
+                subjectGVK:
+                  group: "apps"
+                  version: "v1"
+                  kind: "Deployment"
+                objectGVK:
+                  group: ""
+                  version: "v1"
+                  kind: "ConfigMap"
+                cardinality: ManyToMany
+        - apply:
+            resource:
+              apiVersion: knowledge.miloapis.com/v1alpha1
+              kind: RelationshipType
+              metadata:
+                name: selects-pods-of
+              spec:
+                displayName: "SelectsPodsOf"
+                description: "Subject's selector matches pods managed by object"
+                subjectGVK:
+                  group: ""
+                  version: "v1"
+                  kind: "Service"
+                objectGVK:
+                  group: "apps"
+                  version: "v1"
+                  kind: "Deployment"
+                cardinality: ManyToMany
+        - apply:
+            resource:
+              apiVersion: knowledge.miloapis.com/v1alpha1
+              kind: RelationshipType
+              metadata:
+                name: routes-to
+              spec:
+                displayName: "RoutesTo"
+                description: "Subject routes traffic to object"
+                subjectGVK:
+                  group: "networking.k8s.io"
+                  version: "v1"
+                  kind: "Ingress"
+                objectGVK:
+                  group: ""
+                  version: "v1"
+                  kind: "Service"
+                cardinality: ManyToMany
+        - apply:
+            resource:
+              apiVersion: knowledge.miloapis.com/v1alpha1
+              kind: RelationshipPolicy
+              metadata:
+                name: deployment-references-configmap
+              spec:
+                relationshipType:
+                  name: references-config
+                subject:
+                  apiGroup: apps
+                  kind: Deployment
+                  namespaces: []
+                discovery:
+                  expression: |
+                    subject.spec.template.spec.containers.map(c,
+                      (!has(c.env) ? [] : c.env.filter(e, has(e.valueFrom) && has(e.valueFrom.configMapKeyRef))
+                         .map(e, e.valueFrom.configMapKeyRef.name))
+                    ).flatten().toSet().map(cmName, {
+                      "apiGroup": "",
+                      "kind": "ConfigMap",
+                      "name": cmName,
+                      "namespace": subject.metadata.namespace,
+                      "controlPlaneContextKind": "Project",
+                      "controlPlaneContextName": "default"
+                    })
+                controlPlaneContextRef:
+                  kind: Project
+                  name: default
+        - apply:
+            resource:
+              apiVersion: knowledge.miloapis.com/v1alpha1
+              kind: RelationshipPolicy
+              metadata:
+                name: service-selects-deployment
+              spec:
+                relationshipType:
+                  name: selects-pods-of
+                subject:
+                  apiGroup: ""
+                  kind: Service
+                  namespaces: []
+                discovery:
+                  expression: |
+                    (!has(subject.spec.selector) || subject.spec.selector.size() == 0) ? [] :
+                    candidates.filter(d,
+                      subject.spec.selector.all(k,
+                        d.spec.template.metadata.labels.exists(l, l == k &&
+                          d.spec.template.metadata.labels[l] == subject.spec.selector[k])
+                      )
+                    ).map(d, {
+                      "apiGroup": "apps",
+                      "kind": "Deployment",
+                      "name": d.metadata.name,
+                      "namespace": d.metadata.namespace,
+                      "controlPlaneContextKind": "Project",
+                      "controlPlaneContextName": "default"
+                    })
+                controlPlaneContextRef:
+                  kind: Project
+                  name: default
+        - apply:
+            resource:
+              apiVersion: knowledge.miloapis.com/v1alpha1
+              kind: RelationshipPolicy
+              metadata:
+                name: ingress-routes-to-service
+              spec:
+                relationshipType:
+                  name: routes-to
+                subject:
+                  apiGroup: networking.k8s.io
+                  kind: Ingress
+                  namespaces: []
+                discovery:
+                  expression: |
+                    subject.spec.rules.filter(r, has(r.http)).map(r,
+                      r.http.paths.map(p, {
+                        "apiGroup": "",
+                        "kind": "Service",
+                        "name": p.backend.service.name,
+                        "namespace": subject.metadata.namespace,
+                        "controlPlaneContextKind": "Project",
+                        "controlPlaneContextName": "default"
+                      })
+                    ).flatten().toSet()
+                controlPlaneContextRef:
+                  kind: Project
+                  name: default
+    - name: create-workload
+      try:
+        - apply:
+            resource:
+              apiVersion: v1
+              kind: ConfigMap
+              metadata:
+                name: app-config
+              data:
+                key: value
+        - apply:
+            resource:
+              apiVersion: apps/v1
+              kind: Deployment
+              metadata:
+                name: app
+              spec:
+                replicas: 1
+                selector:
+                  matchLabels:
+                    app: demo
+                template:
+                  metadata:
+                    labels:
+                      app: demo
+                  spec:
+                    containers:
+                      - name: app
+                        image: nginx:alpine
+                        env:
+                          - name: CONFIG_VALUE
+                            valueFrom:
+                              configMapKeyRef:
+                                name: app-config
+                                key: key
+        - apply:
+            resource:
+              apiVersion: v1
+              kind: Service
+              metadata:
+                name: app-svc
+              spec:
+                selector:
+                  app: demo
+                ports:
+                  - port: 80
+        - apply:
+            resource:
+              apiVersion: networking.k8s.io/v1
+              kind: Ingress
+              metadata:
+                name: app-ingress
+              spec:
+                rules:
+                  - host: demo.example.com
+                    http:
+                      paths:
+                        - path: /
+                          pathType: Prefix
+                          backend:
+                            service:
+                              name: app-svc
+                              port:
+                                number: 80
+    - name: assert-relationships-created
+      try:
+        - assert:
+            timeout: 90s
+            resource:
+              apiVersion: knowledge.miloapis.com/v1alpha1
+              kind: ResourceRelationship
+              spec:
+                relationshipType:
+                  name: references-config
+                subject:
+                  kind: Deployment
+                  name: app
+                object:
+                  kind: ConfigMap
+                  name: app-config
+        - assert:
+            timeout: 90s
+            resource:
+              apiVersion: knowledge.miloapis.com/v1alpha1
+              kind: ResourceRelationship
+              spec:
+                relationshipType:
+                  name: selects-pods-of
+                subject:
+                  kind: Service
+                  name: app-svc
+                object:
+                  kind: Deployment
+                  name: app
+        - assert:
+            timeout: 90s
+            resource:
+              apiVersion: knowledge.miloapis.com/v1alpha1
+              kind: ResourceRelationship
+              spec:
+                relationshipType:
+                  name: routes-to
+                subject:
+                  kind: Ingress
+                  name: app-ingress
+                object:
+                  kind: Service
+                  name: app-svc

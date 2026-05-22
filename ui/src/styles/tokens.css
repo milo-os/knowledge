@@ -1,0 +1,46 @@
+:root {
+  /* Backgrounds */
+  --bg-base: #0C1D31;
+  --bg-card: #162B44;
+  --bg-surface: #1A3350;
+  --bg-sidebar: #0F2236;
+  --bg-elevated: #1E3A5A;
+
+  /* Borders */
+  --border: #2A4A6B;
+  --border-subtle: #1E3A5A;
+
+  /* Text */
+  --text-primary: #F0F4F8;
+  --text-secondary: #A8C0D6;
+  --text-muted: #6B8BA8;
+
+  /* Accent */
+  --accent: #7C9FBF;
+  --accent-hover: #9BB8D4;
+
+  /* Pills */
+  --pill-bg: #1E3A5A;
+
+  /* Context colors */
+  --ctx-platform: #9B6B6B;
+  --ctx-organization: #8B5555;
+  --ctx-project: #4D6356;
+  --ctx-user: #9B6B6B;
+
+  /* Source badges */
+  --source-policy: #5B7A3D;
+  --source-manual: #6B8BA8;
+
+  /* Status */
+  --status-valid: #4D6356;
+  --status-error: #C45B56;
+
+  /* Node glow */
+  --node-selected-glow: #A78BFA44;
+
+  /* Typography */
+  --font-heading: 'DM Serif Display', serif;
+  --font-ui: 'DM Sans', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
