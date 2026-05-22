@@ -1,10 +1,8 @@
 version: '3'
 
 vars:
-  APISERVER_IMAGE_NAME: "ghcr.io/milo-os/knowledge-apiserver"
-  APISERVER_IMAGE_TAG: "dev"
-  CONTROLLER_IMAGE_NAME: "ghcr.io/milo-os/knowledge-controller-manager"
-  CONTROLLER_IMAGE_TAG: "dev"
+  IMAGE_NAME: "knowledge"
+  IMAGE_TAG: "dev"
   TEST_INFRA_CLUSTER_NAME: "test-infra"
   TEST_INFRA_REPO_REF: 'v0.6.0'
 
@@ -22,22 +20,26 @@ tasks:
     silent: true
 
   dev:build:
-    desc: Build apiserver and controller-manager Docker images
+    desc: Build the knowledge Docker image
     cmds:
-      - docker build -t "{{.APISERVER_IMAGE_NAME}}:{{.APISERVER_IMAGE_TAG}}" -f Dockerfile.apiserver .
-      - docker build -t "{{.CONTROLLER_IMAGE_NAME}}:{{.CONTROLLER_IMAGE_TAG}}" -f Dockerfile.controller-manager .
+      - docker build -t "{{.IMAGE_NAME}}:{{.IMAGE_TAG}}" .
 
   dev:load:
-    desc: Load dev images into the kind cluster
+    desc: Load the dev image into the kind cluster
     cmds:
-      - kind load docker-image "{{.APISERVER_IMAGE_NAME}}:{{.APISERVER_IMAGE_TAG}}" --name "{{.TEST_INFRA_CLUSTER_NAME}}"
-      - kind load docker-image "{{.CONTROLLER_IMAGE_NAME}}:{{.CONTROLLER_IMAGE_TAG}}" --name "{{.TEST_INFRA_CLUSTER_NAME}}"
+      - kind load docker-image "{{.IMAGE_NAME}}:{{.IMAGE_TAG}}" --name "{{.TEST_INFRA_CLUSTER_NAME}}"
+
+  dev:postgres:
+    desc: Deploy Postgres into the kind cluster for local development
+    cmds:
+      - task test-infra:kubectl -- create namespace knowledge-system --dry-run=client -o yaml | kubectl apply -f -
+      - task test-infra:kubectl -- apply -n knowledge-system -f test/kind/postgres.yaml
+      - task test-infra:kubectl -- rollout status statefulset/postgres -n knowledge-system --timeout=180s
 
   dev:deploy:
-    desc: Deploy knowledge service to the kind cluster
+    desc: Deploy knowledge service to the kind cluster (e2e overlay)
     cmds:
-      - task test-infra:kubectl -- apply -k config/apiserver/
-      - task test-infra:kubectl -- apply -k config/controller-manager/
+      - task test-infra:kubectl -- apply -k config/overlays/e2e/
       - task test-infra:kubectl -- rollout status deployment/knowledge-apiserver -n knowledge-system --timeout=300s
       - task test-infra:kubectl -- rollout status deployment/knowledge-controller-manager -n knowledge-system --timeout=300s
 
