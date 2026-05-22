@@ -57,6 +57,22 @@ jobs:
           KUBECONFIG: .test-infra/kubeconfig
         run: task --yes test-infra:kubectl -- apply -k config/samples/
 
+      - name: Debug pod state (on failure)
+        if: failure()
+        env:
+          KUBECONFIG: .test-infra/kubeconfig
+        run: |
+          echo "=== Pods ==="
+          kubectl get pods -n knowledge-system -o wide
+          echo "=== APIServer logs ==="
+          kubectl logs -n knowledge-system -l app=knowledge-apiserver --tail=80 || true
+          echo "=== Controller-manager logs ==="
+          kubectl logs -n knowledge-system -l app.kubernetes.io/name=knowledge-controller-manager --tail=40 || true
+          echo "=== APIServer pod events ==="
+          kubectl describe pods -n knowledge-system -l app=knowledge-apiserver || true
+          echo "=== APIService status ==="
+          kubectl get apiservice v1alpha1.knowledge.miloapis.com -o yaml || true
+
       - name: Install Chainsaw
         uses: kyverno/action-install-chainsaw@v0.2.14
 
