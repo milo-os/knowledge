@@ -405,7 +405,7 @@ func (w *knowledgeWatch) seedCursorToNow(ctx context.Context) error {
 }
 
 // sendInitialEventList sends ADDED events for all existing objects matching the key prefix.
-func (w *knowledgeWatch) sendInitialEventList(ctx context.Context) error {
+func (w *knowledgeWatch) sendInitialEventList(ctx context.Context) (err error) {
 	keyPrefix := w.key
 	if !strings.HasSuffix(keyPrefix, "/") {
 		keyPrefix += "/"
@@ -450,6 +450,11 @@ func (w *knowledgeWatch) sendInitialEventList(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to query objects for initial events: %w", err)
 	}
+	defer func() {
+		if cerr := rows.Close(); cerr != nil && err == nil {
+			err = fmt.Errorf("close initial-list rows: %w", cerr)
+		}
+	}()
 
 	for rows.Next() {
 		var key string
@@ -457,7 +462,6 @@ func (w *knowledgeWatch) sendInitialEventList(ctx context.Context) error {
 		var data []byte
 
 		if err := rows.Scan(&key, &rv, &data); err != nil {
-			rows.Close()
 			return fmt.Errorf("failed to scan object row: %w", err)
 		}
 
@@ -483,15 +487,12 @@ func (w *knowledgeWatch) sendInitialEventList(ctx context.Context) error {
 				w.lastRV = rv
 			}
 		case <-w.done:
-			rows.Close()
 			return nil
 		}
 	}
 	if err := rows.Err(); err != nil {
-		rows.Close()
 		return err
 	}
-	rows.Close()
 
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("failed to commit initial list snapshot: %w", err)
