@@ -571,7 +571,7 @@ func (w *knowledgeWatch) drainChangelog(ctx context.Context) error {
 }
 
 // pollChanges fetches new changelog entries since the last emitted (commit_xid, id) cursor.
-func (w *knowledgeWatch) pollChanges(ctx context.Context) (int, error) {
+func (w *knowledgeWatch) pollChanges(ctx context.Context) (_ int, err error) {
 	keyPrefix := w.key
 	if !strings.HasSuffix(keyPrefix, "/") {
 		keyPrefix += "/"
@@ -599,7 +599,11 @@ func (w *knowledgeWatch) pollChanges(ctx context.Context) (int, error) {
 	if err != nil {
 		return 0, fmt.Errorf("failed to query changelog: %w", err)
 	}
-	defer rows.Close()
+	defer func() {
+		if cerr := rows.Close(); cerr != nil && err == nil {
+			err = fmt.Errorf("close changelog rows: %w", cerr)
+		}
+	}()
 
 	var n int
 	for rows.Next() {

@@ -94,11 +94,11 @@ func (o *options) config() (*knowledgeapiserver.Config, error) {
 
 	// Override the etcd-derived RESTOptionsGetter with our Postgres one so
 	// Config.Complete() doesn't dereference a nil pointer.
-	serverConfig.Config.RESTOptionsGetter = pgGetter
+	serverConfig.RESTOptionsGetter = pgGetter
 	// EffectiveVersion is normally set by GenericServerRunOptions.ApplyTo which
 	// isn't wired in RecommendedOptions for aggregated servers; set it explicitly.
-	if serverConfig.Config.EffectiveVersion == nil {
-		serverConfig.Config.EffectiveVersion = utilversion.DefaultBuildEffectiveVersion()
+	if serverConfig.EffectiveVersion == nil {
+		serverConfig.EffectiveVersion = utilversion.DefaultBuildEffectiveVersion()
 	}
 
 	// OpenAPIV3Config is required by InstallAPIGroup for SSA type conversion.
