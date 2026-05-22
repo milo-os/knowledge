@@ -163,7 +163,7 @@ func (s *GenericStore) Get(ctx context.Context, key string, opts storage.GetOpti
 }
 
 // GetList retrieves a list of objects matching the key prefix.
-func (s *GenericStore) GetList(ctx context.Context, key string, opts storage.ListOptions, listObj runtime.Object) error {
+func (s *GenericStore) GetList(ctx context.Context, key string, opts storage.ListOptions, listObj runtime.Object) (err error) {
 	listPtr, err := meta.GetItemsPtr(listObj)
 	if err != nil {
 		return storage.NewInternalError(fmt.Errorf("get items ptr: %w", err))
@@ -192,7 +192,11 @@ func (s *GenericStore) GetList(ctx context.Context, key string, opts storage.Lis
 	if err != nil {
 		return storage.NewInternalError(fmt.Errorf("failed to list objects: %w", err))
 	}
-	defer rows.Close()
+	defer func() {
+		if cerr := rows.Close(); cerr != nil && err == nil {
+			err = storage.NewInternalError(fmt.Errorf("close rows: %w", cerr))
+		}
+	}()
 
 	for rows.Next() {
 		var data []byte
@@ -233,7 +237,7 @@ func (s *GenericStore) GetList(ctx context.Context, key string, opts storage.Lis
 // GuaranteedUpdate performs a read-modify-write with optimistic locking.
 func (s *GenericStore) GuaranteedUpdate(ctx context.Context, key string, destination runtime.Object, ignoreNotFound bool, preconditions *storage.Preconditions, tryUpdate storage.UpdateFunc, _ runtime.Object) error {
 	const maxAttempts = 10
-	for attempt := 0; attempt < maxAttempts; attempt++ {
+	for range maxAttempts {
 		data, rv, err := s.guaranteedUpdateOnce(ctx, key, destination, ignoreNotFound, preconditions, tryUpdate)
 		if err == nil {
 			return decode(s.codec, data, destination, rv)

@@ -26,7 +26,7 @@ func GetNeighbors(
 	nodeKeys []string,
 	relationshipTypes []string,
 	direction string,
-) ([]v1alpha1.ResourceRelationship, error) {
+) (_ []v1alpha1.ResourceRelationship, err error) {
 	if len(nodeKeys) == 0 {
 		return nil, nil
 	}
@@ -104,7 +104,11 @@ INNER JOIN UNNEST($1::text[], $2::text[], $3::text[], $4::text[], $5::text[], $6
 	if err != nil {
 		return nil, fmt.Errorf("GetNeighbors: query failed: %w", err)
 	}
-	defer rows.Close()
+	defer func() {
+		if cerr := rows.Close(); cerr != nil && err == nil {
+			err = fmt.Errorf("GetNeighbors: close rows: %w", cerr)
+		}
+	}()
 
 	var results []v1alpha1.ResourceRelationship
 	for rows.Next() {

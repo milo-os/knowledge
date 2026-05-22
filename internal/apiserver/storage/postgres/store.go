@@ -247,7 +247,7 @@ func (s *Store) Get(ctx context.Context, key string, opts storage.GetOptions, ob
 }
 
 // GetList retrieves a list of objects matching the key prefix and options.
-func (s *Store) GetList(ctx context.Context, key string, opts storage.ListOptions, listObj runtime.Object) error {
+func (s *Store) GetList(ctx context.Context, key string, opts storage.ListOptions, listObj runtime.Object) (err error) {
 	listPtr, err := meta.GetItemsPtr(listObj)
 	if err != nil {
 		return storage.NewInternalError(fmt.Errorf("failed to get items pointer: %w", err))
@@ -276,7 +276,11 @@ func (s *Store) GetList(ctx context.Context, key string, opts storage.ListOption
 	if err != nil {
 		return storage.NewInternalError(fmt.Errorf("failed to list objects: %w", err))
 	}
-	defer rows.Close()
+	defer func() {
+		if cerr := rows.Close(); cerr != nil && err == nil {
+			err = storage.NewInternalError(fmt.Errorf("close rows: %w", cerr))
+		}
+	}()
 
 	for rows.Next() {
 		var data []byte
