@@ -1,0 +1,22 @@
+# Build outputs
+/bin/
+*.o
+*.a
+
+# Go
+vendor/
+
+# Node
+ui/node_modules/
+ui/.vite/
+
+# Test infra
+.test-infra/
+
+# Task cache
+.task/
+
+# Local dev
+*.local
+.env
+kubeconfig
