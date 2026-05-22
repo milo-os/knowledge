@@ -51,6 +51,8 @@ jobs:
             -n knowledge-system --timeout=300s
           task --yes test-infra:kubectl -- rollout status deployment/knowledge-controller-manager \
             -n knowledge-system --timeout=300s
+          task --yes test-infra:kubectl -- wait apiservice v1alpha1.knowledge.miloapis.com \
+            --for=condition=Available --timeout=120s
 
       - name: Apply sample data
         env:
